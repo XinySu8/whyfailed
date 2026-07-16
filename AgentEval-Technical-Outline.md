@@ -29,39 +29,19 @@ agenteval compare \
 
 ## System architecture
 
-```text
-                   +------------------+
-                   | Intent suite     |
-                   | + prompt variants|
-                   +--------+---------+
-                            |
-                            v
-+------------------+   +----+-----------------+   +-------------------+
-| Baseline MCP     |-->| MCP process manager  |-->| Tool discovery     |
-| server           |   | + isolated transport |   | + schema snapshot  |
-+------------------+   +----------------------+   +---------+---------+
-                                                               |
-+------------------+   +----------------------+                v
-| Candidate MCP    |-->| MCP process manager  |        +-------+--------+
-| server           |   | + isolated transport |        | Evaluator      |
-+------------------+   +----------------------+        | agent runtime  |
-                                                        +-------+--------+
-                                                                |
-                                                                v
-                                                        +-------+--------+
-                                                        | Trace collector|
-                                                        | + scorer       |
-                                                        +-------+--------+
-                                                                |
-                                                                v
-                                                        +-------+--------+
-                                                        | Aggregator &   |
-                                                        | behavior diff  |
-                                                        +-------+--------+
-                                                                |
-                                                   +------------+------------+
-                                                   v                         v
-                                            Terminal/JSON report       HTML report
+```mermaid
+flowchart LR
+    Suite[Intent suite and prompt variants] --> Runner[Evaluation runner]
+    Baseline[Baseline MCP server] --> BaselineManager[Isolated baseline process]
+    Candidate[Candidate MCP server] --> CandidateManager[Isolated candidate process]
+    BaselineManager --> Discovery[MCP discovery and tool snapshot]
+    CandidateManager --> Discovery
+    Discovery --> Runner
+    Runner --> Evaluator[Evaluation model and tool-call runtime]
+    Evaluator --> Traces[Trace collector and scorer]
+    Traces --> Aggregate[Aggregator and behavior diff]
+    Aggregate --> Terminal[Terminal and JSON report]
+    Aggregate --> Html[HTML report]
 ```
 
 ### Core components
