@@ -78,6 +78,87 @@ agenteval compare \
 | Aggregator | Computes counts, rates, deltas, thresholds, and trace groupings for each intent and version. |
 | Reporter | Produces machine-readable JSON and human-readable terminal/HTML behavior-diff reports. |
 
+## Architecture at a glance
+
+This view separates the developer's inputs, the isolated evaluation environments, and the resulting CI artifact.
+
+```mermaid
+flowchart LR
+    Dev[Developer or CI] --> Config[AgentEval config and intent suite]
+    Dev --> Base[Baseline server target]
+    Dev --> Cand[Candidate server target]
+
+    Base --> BProc[Isolated baseline MCP process]
+    Cand --> CProc[Isolated candidate MCP process]
+    BProc --> BTools[Baseline tool snapshot]
+    CProc --> CTools[Candidate tool snapshot]
+
+    Config --> Runner[Evaluation runner]
+    BTools --> Runner
+    CTools --> Runner
+    Runner --> Model[Tool-calling evaluation model]
+    Model --> Calls[MCP tool calls]
+    Calls --> BProc
+    Calls --> CProc
+    Runner --> Traces[Saved trial traces]
+    Traces --> Score[Deterministic scorer and aggregator]
+    Score --> Report[Terminal, JSON, and HTML behavior diff]
+    Report --> Decision[Developer diagnosis or CI merge decision]
+```
+
+## Evaluation workflow
+
+This is the end-to-end path for one comparison. The repeated-trial loop is important: a single successful prompt does not establish reliable discoverability.
+
+```mermaid
+flowchart TD
+    Start([Start comparison]) --> Validate[Validate configuration and intent suite]
+    Validate --> Launch[Launch baseline and candidate MCP servers]
+    Launch --> Discover[Discover and snapshot tools for each version]
+    Discover --> Select[Select intent, prompt variant, repetition, and version]
+    Select --> Evaluate[Give intent and discovered tools to evaluation model]
+    Evaluate --> Choice{Model makes a tool call?}
+    Choice -- No --> Incomplete[Record incomplete or timed-out trial]
+    Choice -- Yes --> Invoke[Invoke MCP tool and record arguments and response]
+    Invoke --> ScoreTrial[Score first tool, arguments, and outcome]
+    ScoreTrial --> More{More scheduled trials?}
+    Incomplete --> More
+    More -- Yes --> Select
+    More -- No --> Aggregate[Aggregate counts, rates, deltas, and failures]
+    Aggregate --> Threshold{Regression threshold met?}
+    Threshold -- Yes --> Regressed[Write report with regression status and evidence]
+    Threshold -- No --> Healthy[Write report with pass or inconclusive status]
+    Regressed --> End([Exit with configured CI status])
+    Healthy --> End
+```
+
+## What a developer sees
+
+The product turns many raw model trials into a short, reviewable result while retaining the trace evidence behind it.
+
+```mermaid
+sequenceDiagram
+    participant D as Developer or CI
+    participant A as AgentEval
+    participant B as Baseline MCP server
+    participant C as Candidate MCP server
+    participant M as Evaluation model
+
+    D->>A: compare baseline vs candidate with intent suite
+    A->>B: initialize and list tools
+    B-->>A: find_travel_policy, search_docs
+    A->>C: initialize and list tools
+    C-->>A: changed tool descriptions and schemas
+    loop every intent, variant, repetition, and version
+        A->>M: user intent plus discovered tools
+        M-->>A: selected tool and arguments
+        A->>B: invoke selected tool when baseline trial
+        A->>C: invoke selected tool when candidate trial
+        A->>A: save trace and score deterministic rules
+    end
+    A-->>D: behavior diff, trace links, and CI exit status
+```
+
 ## Functional requirements
 
 ### MCP comparison
@@ -235,6 +316,55 @@ CI invokes the CLI after building the application and makes the JSON/HTML artifa
 ```
 
 An optional later integration can turn `report.json` into a pull-request check or comment. The CLI and artifact format must remain useful without that integration.
+
+### Pull-request integration example
+
+```mermaid
+flowchart LR
+    PR[Pull request changes MCP tool definition] --> Build[Build candidate server]
+    Main[Main branch server] --> Base[Start baseline target]
+    Build --> Candidate[Start candidate target]
+    Suite[Versioned intent suite] --> Eval[Run AgentEval]
+    Base --> Eval
+    Candidate --> Eval
+    Eval --> Artifact[Upload JSON, HTML, and traces]
+    Eval --> Check{Threshold exceeded?}
+    Check -- No --> Pass[CI check passes]
+    Check -- Yes --> Fail[CI check fails or warns]
+    Artifact --> Review[Developer reviews wrong-tool traces]
+    Fail --> Review
+```
+
+## Behavior-diff example
+
+This example makes the project concrete: protocol tests can pass while an agent becomes less likely to recognize the right tool after its description loses specificity.
+
+```mermaid
+flowchart TB
+    Intent[Intent: Find the policy for international business travel]
+    Intent --> Before
+    Intent --> After
+
+    subgraph Before[Baseline tool descriptions]
+        BPolicy[find_travel_policy\nReturns company policy for business travel]
+        BDocs[search_docs\nSearches general company documents]
+        BPolicy --> BSelect[Agent selects find_travel_policy\n23 of 24 trials]
+    end
+
+    subgraph After[Candidate tool descriptions]
+        CPolicy[find_travel_policy\nSearches company information]
+        CDocs[search_docs\nSearches general company documents]
+        CPolicy --> Ambiguous[Descriptions overlap]
+        CDocs --> Ambiguous
+        Ambiguous --> CSelect[Agent selects find_travel_policy\n14 of 24 trials]
+        Ambiguous --> Wrong[Agent selects search_docs first\n9 traces]
+    end
+
+    BSelect --> Diff[Behavior diff: 96 percent to 58 percent\nMinus 38 points]
+    CSelect --> Diff
+    Wrong --> Diff
+    Diff --> Flag[Regression: below 75 percent reliability floor]
+```
 
 ### Model provider
 
