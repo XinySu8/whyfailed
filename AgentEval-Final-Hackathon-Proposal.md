@@ -104,12 +104,14 @@ This scope makes the product easy to understand and hard to dismiss as vaporware
 
 ## Technical design
 
-```text
-baseline MCP server ─┐
-                     ├─ MCP discovery ── GPT-5.6 evaluator ── trace collector
-candidate MCP server ─┘                                      │
-                                                               ▼
-intent suite + variants ────────────────────────────── metrics + behavior diff
+```mermaid
+flowchart LR
+    Baseline[Baseline MCP server] --> Discover[MCP discovery]
+    Candidate[Candidate MCP server] --> Discover
+    Discover --> Evaluator[GPT-5.6 evaluator]
+    Intents[Intent suite and prompt variants] --> Evaluator
+    Evaluator --> Traces[Trace collector]
+    Traces --> Metrics[Metrics and behavior diff]
 ```
 
 Each evaluator run receives one user intent and the tools discovered from the selected server version. It may call tools normally; the harness records the first choice, validates arguments against the tool schema, and checks a simple deterministic success predicate from the demo server.
