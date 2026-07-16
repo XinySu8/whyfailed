@@ -76,6 +76,10 @@ Do not use Fable for mechanical formatting, routine fixture edits, or independen
 
 Codex and Claude Code, regardless of the selected Claude model, must leave work in a form the other agent can safely continue.
 
+### Changing owners or accounts
+
+When a new person takes over, follow `NEW-ACCOUNT-TAKEOVER.md`. Automations, logins, quotas, local `.env` files, and Git-hook activation are account or machine local; recreate them with the new owner's account and never copy them from another account.
+
 ### Visible admin chat
 
 Use [`ADMIN-AGENT-CHAT.md`](../ADMIN-AGENT-CHAT.md) for all cross-agent handoffs and decisions the developer should be able to inspect. The Codex lead opens a task entry before delegating and closes it with verification after the work is reviewed. Claude Code responds beneath the same task entry; it must not silently change scope.

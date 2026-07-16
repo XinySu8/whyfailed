@@ -1,0 +1,27 @@
+{
+  "name": "agenteval",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Behavior-diff evaluation for MCP tool discoverability.",
+  "type": "module",
+  "bin": {
+    "agenteval": "./src/cli.js"
+  },
+  "scripts": {
+    "demo:baseline": "node demo/travel-policy-server.js baseline",
+    "demo:candidate": "node demo/travel-policy-server.js candidate",
+    "test": "node --test",
+    "lint": "node scripts/lint.mjs",
+    "review:staged": "node scripts/adversarial-review.mjs",
+    "hooks:install": "git config core.hooksPath .githooks"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ajv": "^8.17.1",
+    "openai": "^4.0.0",
+    "yaml": "^2.6.0"
+  }
+}

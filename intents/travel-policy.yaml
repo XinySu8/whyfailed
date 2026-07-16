@@ -1,0 +1,20 @@
+suite: travel-policy
+version: 1
+defaults:
+  variants_per_intent: 2
+  repetitions: 2
+  max_tool_calls: 3
+  timeout_seconds: 30
+intents:
+  - id: international-travel-policy
+    prompt: Find the company policy for international business travel.
+    variants:
+      - What are the rules for employees traveling abroad on business?
+      - Show me our international work-trip policy.
+    expected_first_tool: find_travel_policy
+    argument_rules:
+      - path: $.scope
+        equals: international
+    success:
+      tool: find_travel_policy
+      response_contains: International business travel

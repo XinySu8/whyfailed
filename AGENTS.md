@@ -14,3 +14,7 @@ Do not commit secrets, modify unrelated files, or present replay data as a live 
 ## Shared agent coordination
 
 Use `ADMIN-AGENT-CHAT.md` as the visible coordination log whenever work passes between Codex, Claude Code, Fable, or the developer. Add a short structured entry before delegation and after completion. The developer may read or add entries at any time.
+
+## Commit gate
+
+Before every commit, run the adversarial review gate described in `.agents/ADVERSARIAL-REVIEW.md`. Do not bypass it except with an explicit, recorded emergency reason.

@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${AGENTEVAL_SKIP_AI_REVIEW:-}" = "1" ]; then
+  echo "AgentEval pre-commit review skipped by explicit AGENTEVAL_SKIP_AI_REVIEW=1 override."
+  exit 0
+fi
+
+node scripts/adversarial-review.mjs
